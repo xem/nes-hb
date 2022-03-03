@@ -1,0 +1,161 @@
+<tt>
+<h2>NES homebrew experiment #2: compile JS code into a NES rom</h2>
+<h3>Goal</h3>
+<ul>
+<li>Make a JS subset that can compile into 6502 assembly
+<li>Create helper functions to ease:
+<br>- memory accesses (RAM, ROM, registers)
+<br>- CPU operations (Maths, variables, binary operations, jumps)
+<br>- graphics (frames, palettes, backgrounds, sprites, scrolling, HUD, text)
+<br>- sound (5 channels)
+<br>- controls (1-2 gamepads)
+<br>- And more... Text? Floating-point math? 3D?
+</ul>
+<br><br>
+
+<textarea>
+/*
+======
+JS2NES
+======
+*/
+
+// A JS subset compilable into 6502 ASM
+// Single-line and multi-line comments are allowed
+
+// Global vars
+// -----------
+
+//  A, X, Y (general purpose), SP (stack pointer), P (status): CPU registers (values: 0-255)
+//  PC: CPU program counter (value: 0-65535)
+//  C, Z, I, D, B, V, N: CPU status flags, values 0-1
+//  PRG_ROM (UInt8Array(32 * 1024)): read-only
+//  CHR_ROM (UInt8Array(8 * 1024)): read-only
+//  RAM (UInt8Array(2 * 1024)): zero page is in $0000-00FF for quick access, stack is in $0100-$01FF
+//  VRAM (UInt8Array(4 * 1024)): background tiles/attributes
+//  palettes (UInt8Array(32)): 4 background palettes (BG0, BG1, BG2, BG3), 4 sprites palettes (SP0, SP1, SP2, SP3). (values: 0-63)
+//  OAM (UInt8Array(256)): Attributes of up to 64 sprites (4 bytes each). Also accessible through OAM1, 0AM2, etc.
+//  mirroring: 0 (horizontal), 1 (vertical), 2 (both)
+
+mirroring = 1;
+
+// Syntax
+// ------
+
+// Values: number (0-255) | register | flag | byte in memory (ROM[N], RAM[N], VRAM[N], palette[N], OAM[N])
+// Expressions:
+//  {value} = {value}
+//  {value} = {value} + {value}
+//  {value} = {value} - {value}
+//  {value} = {value} * {value}
+//  {value} = {value} / {value}
+//  {value} = {value} & {value}
+//  {value} = {value} | {value}
+//  {value} = {value} ^ {value}
+//  {value} = {value} % {value}
+//  {value} = {value} << {value}
+//  {value} = {value} >> {value}
+//  {value} += {value}
+//  {value} -= {value}
+//  {value} *= {value}
+//  {value} /= {value}
+//  {value} &= {value}
+//  {value} |= {value}
+//  {value} ^= {value}
+//  {value} %= {value}
+//  {value} <<= {value}
+//  {value} >>= {value}
+//  {value} ++
+//  {value} --
+
+A = 1;
+X = 2;
+Y = 3;
+SP = 1;
+P = 0x24;
+PC = 0x8010;
+I = 1;
+C = 1;
+I = 0;
+C = 0;
+RAM[0] = X;
+RAM[1] = Y;
+RAM[2] = A;
+RAM[3] = 255;
+RAM[4] = VRAM[0];
+RAM[5] = PRG_ROM[0];
+RAM[6] = CHR_ROM[0];
+RAM[0x200] = X;
+RAM[0x201] = Y;
+RAM[0x202] = A;
+RAM[0x203] = 255;
+RAM[0x204] = VRAM[0];
+RAM[0x205] = PRG_ROM[0];
+RAM[0x206] = CHR_ROM[0];
+VRAM[0] = X;
+VRAM[1] = Y;
+VRAM[2] = A;
+VRAM[3] = 255;
+VRAM[4] = VRAM[0];
+VRAM[5] = PRG_ROM[0];
+VRAM[6] = CHR_ROM[0];
+palettes[0] = X;
+palettes[1] = Y;
+palettes[2] = A;
+palettes[3] = 255;
+palettes[4] = VRAM[0];
+palettes[5] = PRG_ROM[0];
+palettes[6] = CHR_ROM[0];
+BG0[0] = 0x30;
+OAM[0] = X;
+OAM[1] = Y;
+OAM[2] = A;
+OAM[3] = 255;
+OAM[4] = VRAM[0];
+OAM[5] = PRG_ROM[0];
+OAM[6] = CHR_ROM[0];
+
+
+push(X)
+push(A)
+push(P)
+pull(X)
+pull(A)
+pull(P)
+rol(A)
+rol(mem)
+ror(A)
+ror(mem)
+
+
+if(X > mem)
+if(X != mem)
+if(X == mem)
+if(Y > mem)
+if(Y != mem)
+if(Y == mem)
+
+bit(mem)
+
+routine()
+
+return()
+
+jump()
+
+nop()
+
+
+
+
+
+
+
+
+
+
+</textarea>
+
+<style>
+textarea { width: 1000px; height: 800px }
+</style>

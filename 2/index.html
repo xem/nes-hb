@@ -1,207 +1,393 @@
 <tt>
-<h2>NES homebrew experiment #1: display a background tile</h2>
+<h2>NES homebrew experiment #2: compile JS code into a NES rom</h2>
 <h3>Goal</h3>
 <ul>
-<li>Have a 8x8px tile written in the CHR-ROM (16 bytes).
-<li>Start the program.
-<li>Wait for 2 frames (the PPU is not ready before that).
-<li>Write 4 colors into the background subpalette 0.
-<li>Enable background rendering.
-<li>The colored tile should be visible on screen (as a mosaic).
+<li>Make a JS lib containing a function for each opcode of the NES's CPU.
+<br>(For now, only the implicit, immediate, relative, absolute and absolute+X addressing modes are supported)
+<li>Each function returns its address in the CPU memory (to ease jumps and branches) and outputs asm / binary code.
 </ul>
-<br><br>
+<br>
+<br>
+<table>
+<tr>
+<td>
+<p>JS code
+<br><textarea id=t_js spellcheck=false>
+// ADC: A = A + value + C
+ADC(imm, 0xFF);
+ADC(abs, 0x8001);
+ADC(absx, 0x8002);
 
-<h3>Tool #1: Tile editor</h3>
-<p>This editor allows to edit a single tile.
-<br>Click the pixels to loop through colors 0-4.
+// AND: A = A & value
+AND(imm, 0xFF);
+AND(abs, 0x8001);
+AND(absx, 0x8002);
+
+// ASL A: left shift A
+foo = ASL(A);
+
+// ASL: left shift value
+ASL(abs, 0x8001);
+ASL(absx, 0x8002);
+
+// BCC: if(!C) PC = addr
+BCC(0x8005);
+BCC(0x8020);
+BCC(0x7F9D);
+BCC(0x809B);
+BCC(foo);
+
+
+</textarea>
+<td>
+<p>ASM
+<br><textarea id=t_asm readonly></textarea>
+<td>
+<p>Binary
+<br><textarea id=t_bin readonly></textarea>
+</table>
 <p>
+<button id=compile>Compile</button>
+<button id=dl>Download ROM</button><a hidden download="hb.nes" id=link></a>
+Trace <input type=number id=test_nb min=1 step=1 value=10> instructions <button id=test>GO</button></button>
+<p><textarea id=t_test>
 
-<canvas id=a width=161 height=161></canvas>
-<textarea cols=20 id=chr_bytes spellcheck=false></textarea>
-<p><button id=load>Load example</button> <button id=res>Reset</button>
+</textarea>
+
+
+<style>
+textarea { width: 180px; height: 400px }
+#t_js { width: 400px }
+#t_asm { width: 220px }
+td { vertical-align: top }
+#t_test { width: 800px; height: 100px; }
+#test_nb { width: 50px }
+
+</style>
+
+
 <script>
-pal = ["#000","#555","#aaa","#fff"];
-px = [];
-c = a.getContext("2d");
-c.fillRect(0,0,160,160);
-c.fillStyle="#ccc";
-for(i = 0; i < 9; i++){
-  c.fillRect(i*20, 0, 1, 160);
-  c.fillRect(0, i*20, 160, 1);
-}
-a.onclick = e => {
-  console.log(x = e.layerX/20|0, y = e.layerY/20|0);
-  px[y*8+x] |= 0;
-  px[y*8+x] ++;
-  px[y*8+x] %= 4;
-  c.fillStyle = pal[px[y*8+x]];
-  c.fillRect(x*20,y*20,20,20);
-  c.fillStyle="#ccc";
-  for(i = 0; i < 9; i++){
-    c.fillRect(i*20, 0, 1, 160);
-    c.fillRect(0, i*20, 160, 1);
+bin = []; // start with 1 NOP to ease NO$NES debug 
+asm = [];
+error = 0;
+addr = 0;
+imp = 0;
+A = 0;
+imm = 1;
+abs = 2;
+absx = 3;
+
+// Complete the binary opcode with the right argument according to the addressing mode
+arg_bin = (mode, arg) => {
+
+  // immediate
+  if(mode == 1){
+    return [arg];
   }
-  chr();
-}
-load.onclick = () => {
-  px = [0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,1,2,2,0,0,0,0,0,2,2,2,0,2,0,3,3,3,3,3,3,3,0,2,0,3,3,3,0,0,0,0,0,1,1,1,0,0,0,0,2,2,0,2,2,0,0];
-  render();
+  // absolute, absolute+X
+  else if(mode == 2 || mode == 3){
+    return [arg & 0xFF, (arg >> 8) & 0xFF];
+  }
+  return []
 }
 
-res.onclick = () => {
-  px = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
-  render();
-}
-render = () => {
-  for(i in px){
-    x = i % 8;
-    y = i / 8 | 0;
-    c.fillStyle = pal[px[y*8+x]];
-    c.fillRect(x*20,y*20,20,20);
+// Complete the assembly opcode with the right argument according to the addressing mode
+arg_asm = (mode, arg) => {
+  // immediate
+  if(mode == 1){
+    return "#" + arg.toString(16).padStart(2,0);
   }
-  c.fillStyle="#ccc";
-  for(i = 0; i < 9; i++){
-    c.fillRect(i*20, 0, 1, 160);
-    c.fillRect(0, i*20, 160, 1);
+  // absolute, absolute+X
+  else if(mode == 2){
+    return "$" + arg.toString(16).padStart(4,0);
   }
-  chr();
+  else if(mode == 3){
+    return "$" + arg.toString(16).padStart(4,0) + "+X";
+  }
+  return []
 }
 
-chr = () => {
-
-  b = [];
-  
-  for(i = 0; i < 16; i++){
-    b[i] = 0;
+// Add an opcode with implicit, immediate, absolute and absolute+X addressing modes
+opc = (name, opcodes) => {
+  return (mode, arg, tmp) => {
+    tmp = 0x8000 + bin.length;
+    if(!error) bin.push(opcodes[mode], ...arg_bin(mode, arg));
+    if(!error) asm.push(`${tmp.toString(16).padStart(4,0)}: ${name} ${arg_asm(mode, arg)}${(name == "ASL" && mode == 0) ? "A" : ""}`);
+    return tmp;
   }
-  for(x = 0; x < 8; x++){
-    for(y = 0; y<8; y++) {
-      p = px[y * 8 + x];
-      if(p & 0b01){
-        b[y] += 1 << (7-x);
-      }
-      if(p & 0b10){
-        b[y+8] += 1 << (7-x);
-      }
+}
+
+// Add an opcode with relative addressing mode
+opc_rel = (name, opcode) => {
+  return (arg, tmp, Z) => {
+    tmp = 0x8000 + bin.length; // PC
+    // arg = (PC+1)+Z-256*(Z>>7);
+    if(arg >= tmp && arg <= tmp + 128) {
+      Z = arg - tmp - 1;
     }
+    else if(arg < tmp && arg > tmp - 128){
+      Z = arg - tmp - 1 + (1 << 8);
+    }
+    else {
+      console.error(`${tmp.toString(16).padStart(4,0)} : ${name} ${arg.toString(16).padStart(4,0)} out of range. Target must be between PC-127 ($${(tmp-127).toString(16).padStart(4,0)}) and PC+128 ($${(tmp+128).toString(16).padStart(4,0)})`);
+      error = 1;
+      asm.push(`${tmp.toString(16).padStart(4,0)}: error (see console)`);
+    }
+    if(!error) bin.push(opcode, Z);
+    if(!error) asm.push(`${tmp.toString(16).padStart(4,0)}: ${name} $${arg.toString(16).padStart(4,0)}`);
+    return tmp;
   }
-  for(i = 0; i < 16; i++){
-    b[i] = b[i].toString(16).padStart(2,0);
-  }
-  
-  chr_bytes.innerHTML = `CHR-ROM bytes:
-
-0000: ${b[0]} ${b[1]} ${b[2]} ${b[3]} 
-0004: ${b[4]} ${b[5]} ${b[6]} ${b[7]} 
-0008: ${b[8]} ${b[9]} ${b[10]} ${b[11]} 
-000b: ${b[12]} ${b[13]} ${b[14]} ${b[15]}`
 }
 
-chr();
+// ADC (add to accumulator with carry)
+// A = A + a byte in memory + Carry. Flags: N, Z, C, V
+// Flag C is set if there's a carry
+// Flag V is set if the sum of two positive numbers is incorrectly considered negative
+ADC = opc("ADC A,", [,0x69, 0x6D, 0x7D]); // name, [imp, imm, abs, absX]
 
-</script>
-<br><br>
-<br><br>
-<h3>Tool #2: Palette editor</h3>
-<p>This editor allows to edit a single background subpalette.
-<br>It will be applied to the tile above.
-<br>Each color can be picked among the the 64 NES system colors.
+// AND (AND memory and accumulator)
+// A = A AND a byte in memory. Flags: N, Z
+AND = opc("AND A,", [,0x29, 0x2D, 0x3D]); // name, [imp, imm, abs, absX]
 
-<p><select id=c1 value=63></select> 
-<select id=c2 value=45></select> 
-<select id=c3 value=16></select> 
-<select id=c4 value=48></select> 
-<input id=pal_bytes spellcheck=false>
+// ASL (shift left)
+// ASL: A byte in memory is left shifted. Flags: N, Z, C
+// ASL A: accumulator is left shifted. Flags: N, Z, C
+// The shifted-out bit 7 is saved in C
+ASL = opc("ASL", [0x0A, , 0x0E, 0x1E]); // name, [imp, imm, abs, absX]
 
-<script>
-systemPalette = (
-  "666134124214414413412421441341241142144000000000aaa38a34a53a93aa38a34a53a938a34a33a53a9000000000fff6be67e96ed6ee6be67e96ed6be67e66e96ed555000000fffcefccfdcffcffcefccfdcffcefccfccfdcffbbb000000"
-)
-.match(/.../g)
-.map(c => ("#" + c[0] + c[0] + c[1] + c[1] + c[2] + c[2]));
+// BCC (branch on carry clear)
+// PC = address if C is 0
+BCC = opc_rel("BCC", 0x90); // name, rel
 
-html = "";
-for(i = 0; i < 64; i++){
-  html += `<option value="${i}" style="background:${systemPalette[i]}">${systemPalette[i]}</option>`
-  c1.innerHTML =
-  c2.innerHTML =
-  c3.innerHTML =
-  c4.innerHTML = html;
-  c1.value = 63;
-  c2.value = 45;
-  c3.value = 16;
-  c4.value = 48;
+// BCS (branch on carry set)
+// PC = address if C is 1
+BCS = opc_rel("BCS", 0xB0);
+
+// BEQ (branch if equal)
+// PC = address if Z is 0
+BEQ = opc_rel("BEQ", 0xF0);
+
+// BIT (test bits in memory)
+// N and V = bits 7 and 6 of operand. Z is set if operand AND A is not zero. Flags: N, Z, V
+BIT = opc("BIT", [, , 0x2C, ]);
+
+// BMI (branch on minus)
+// PC = address if N is 1
+BMI = opc_rel("BMI", 0x30);
+
+// BNE (branch if not equal)
+// PC = address if Z is 1
+BNE = opc_rel("BNE", 0xD0);
+
+// BPL (branch on plus)
+// PC = address if N is 0
+BPL = opc_rel("BPL", 0x10);
+
+// BRK (force break)
+// Interrupt, push PC+2 (PC+1 is a padding byte), push P with B flag set to 1, set I to 1
+BRK = opc("BRK", [0x00, , , ]);
+
+// BVC (branch on overflow clear)
+// PC = address if V is 0
+BVC = opc_rel("BVC", 0x50);
+
+// BVS (branch on overflow set)
+// PC = address if V is 1
+BVS = opc_rel("BVS", 0x70);
+
+// CLC (clear carry flag)
+// C is set to 0
+CLC = opc("CLC", [0x18, , , ]);
+
+// CLD (clear decimal flag)
+// D is set to 0
+CLD = opc("CLD", [0xD8, , , ]);
+
+// CLI (clear interrupt disable flag)
+// I is set to 0
+CLI = opc("CLI", [0x58, , , ]);
+
+// CLV (clear overflow flag)
+// V is set to 0
+CLV = opc("CLV", [0xB8, , , ]);
+
+// CMP (compare memory and accumulator)
+// N, Z and C are set with the result of A - a byte in memory
+// Flag C is set if there's no borrow
+CMP = opc("CMP A,", [, 0xC9, 0xCD, 0xDD]); // name, [imp, imm, abs, absX]
+
+// CPX (compare memory and X)
+// N, Z and C are set with the result of X minus a byte in memory
+// Flag C is set if there's no borrow
+CPX = opc("CPX", [, 0xE0, 0xEC, ]); // name, [imp, imm, abs, absX]
+
+// CPY (compare memory and Y)
+// N, Z and C are set with the result of Y minus a byte in memory
+// Flag C is set if there's no borrow
+CPY = opc("CPY", [, 0xC0, 0xCC, ]);
+
+// DEC (decrement memory)
+// A byte in memory is decremented. Flags: N, Z
+DEC = opc("DEC", [, , 0xCE, 0xDE]);
+
+// DEX (decrement X)
+// X is decremented. Flags: N, Z
+DEX = opc("DEX", 0xCA);
+
+// DEY (decrement Y)
+// Y is decremented. Flags: N, Z
+DEY = opc("DEY", 0x88);
+
+// EOR (exclusive-or memory and accumulator)
+// A = A XOR a byte in memory. Flags: N, Z
+EOR = opc("EOR A,", [, 0x49, 0x4D, 0x5D]);
+
+// INC (increment memory)
+// A byte in memory is incremented. Flags: N, Z
+INC = opc("INC", [, , 0xEE, 0xFE]);
+
+// INX (increment X)
+// X is incremented. Flags: N, Z
+INX = opc("INX", [0xE8, , ,]);
+
+// INY (increment Y)
+// Y is incremented. Flags: N, Z
+INY = opc("INY", [0xAC, , , ]);
+
+// JMP (jump to new location)
+// Set a new value to PC
+JMP = opc("JMP", [, , 0x4C, ]);
+
+/*
+
+JSR = () => {
+
 }
 
-oninput = render_palette = () => {
-  pal_bytes.value = `Palette bytes: ${(+c1.value).toString(16).padStart(2,0)} ${(+c2.value).toString(16).padStart(2,0)} ${(+c3.value).toString(16).padStart(2,0)} ${(+c4.value).toString(16).padStart(2,0)}`;
-  pal[0] = systemPalette[c1.value];
-  pal[1] = systemPalette[c2.value];
-  pal[2] = systemPalette[c3.value];
-  pal[3] = systemPalette[c4.value];
-  render();
-  render_prg();
-}
-</script>
-
-<br><br>
-<br><br>
-<br><br>
-
-<h3>The program (PRG-ROM bytes + asm code)</h3>
-<p>No tool yet, I wrote that by hand.
-<p><textarea id=prg_bytes readonly></textarea>
-
-<script>
-render_prg = () => {
-
-prg_bytes.innerHTML = `8000: 2C 02 20 ; bit $2002 ; test the PPU status register (initializes the status register P)
-8003: 2C 02 20 ; bit $2002 ; test the PPU status register for real
-8006: 10 FB    ; bpl $8003 ; loop back to $8003 while N flag is 0. Continue if N = 1 (it means that one VBlank has occurred)
-8008: 2C 02 20 ; bit $2002 ; test the PPU status register again
-800b: 10 FB    ; bpl $8008 ; loop back to $8008 while N flag is 0. Continue if N = 1 (it means that a second VBlank has occurred)
-800d: A2 3F    ; LDX 3F    ; set X = 3F.
-800f: 8E 06 20 ; STX $2006 ; write X (3F) into the high byte of PPUADDR (the PPU address we want to write to), through the CPU register $2006.
-8013: A2 00    ; LDX 00    ; set X = 00
-8015: 8E 06 20 ; STX $2006 ; write X (00) into the low byte of PPUADDR. After these two writes, PPUADDR = $3F00.
-8018: A2 ${(+c1.value).toString(16).padStart(2,0)}    ; LDX ${(+c1.value).toString(16).padStart(2,0)}    ; set X = first color of BG palette 0.
-801a: 8E 07 20 ; STX $2007 ; write X in PPU memory at address $3F00. This is done by writing X at CPU address $2007 (PPUDATA). PPUADDR is auto-incremented after the write.
-801d: A2 ${(+c2.value).toString(16).padStart(2,0)}    ; LDX ${(+c2.value).toString(16).padStart(2,0)}    ; set X = second color of BG palette 0.
-801f: 8E 07 20 ; STX $2007 ; write X in PPU memory at address $3F01.
-8023: A2 ${(+c3.value).toString(16).padStart(2,0)}    ; LDX ${(+c3.value).toString(16).padStart(2,0)}    ; set X = third color of BG palette 0.
-8025: 8E 07 20 ; STX $2007 ; write X in PPU memory at address $3F02.
-8028: A2 ${(+c4.value).toString(16).padStart(2,0)}    ; LDX ${(+c4.value).toString(16).padStart(2,0)}    ; set X = fourth color of BG palette 0.
-802a: 8E 07 20 ; STX $2007 ; write X in PPU memory at address $3F03.
-8e2d: A2 0A    ; LDX 0A    ; set X = 0A
-8e2f: 8E 01 20 ; STX $2001 ; write X in CPU memory at address $2001 (PPUMASK). This enables PPU's background rendering.
-8033: 10 FC    ; bpl $802e ; infinite loop.
-                           ; at this point, all the background tiles should be drawn like in the editor above, as they all use the tile 0 and palette 0 by default.
-                           ; also: the screen has been scrolled because of the PPUADDR writes. If a different scroll value is required (ex: reset to 0:0), it must be done last.`
+LDA = () => {
 
 }
-render_palette();
-render_prg();
-</script>
 
-<br><br>
-<br><br>
+LDX = () => {
 
-<h3>Conclusion</h3>
-<p>We can now edit a tile in the CHR-ROM, a background palette in the VRAM and have them displayed on screen after making the CPU wait a couple frames and set some registers.
-<br>A custom NES ROM (Mapper 0) can be build and played on emulator like <a href="//xem.github.io/jsnes-lite" target=_blank>JSNES-lite</a>:
-<p><button id=dl>Download custom ROM</button> <a hidden download="hb1.nes" id=link>DL</a>
+}
 
-<script>
+LDY = () => {
+
+}
+
+LSR = () => {
+
+}
+
+NOP = () => {
+
+}
+
+ORA = () => {
+
+}
+
+PHA = () => {
+
+}
+
+PHP = () => {
+
+}
+
+PLA = () => {
+
+}
+
+PLP = () => {
+
+}
+
+ROL = () => {
+
+}
+
+ROR = () => {
+
+}
+
+RTI = () => {
+
+}
+
+RTS = () => {
+
+}
+
+SBC = () => {
+
+}
+
+SEC = () => {
+
+}
+
+SED = () => {
+
+}
+
+SEI = () => {
+
+}
+
+STA = () => {
+
+}
+
+STX = () => {
+
+}
+
+STY = () => {
+
+}
+
+TAX = () => {
+
+}
+
+TAY = () => {
+
+}
+
+TSX = () => {
+
+}
+
+TXA = () => {
+
+}
+
+TXS = () => {
+
+}
+
+TYA = () => {
+
+}
+*/
+
+
+onload = compile.onclick = () => {
+  bin = [];
+  asm = [];
+  error = 0;
+  eval(t_js.value);
+  t_asm.innerHTML = asm.join("\n");
+  t_bin.innerHTML = bin.map(x=>x.toString(16).padStart(2,0)).join(" ");
+}
+
 dl.onclick = () => {
 
   bytes = [
   
 	0x4E, 0x45, 0x53, 0x1A, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x2C, 0x02, 0x20, 0x2C, 0x02, 0x20, 0x10, 0xFB,
-	0x2C, 0x02, 0x20, 0x10, 0xFB, 0xA2, 0x3F, 0x8E, 0x06, 0x20, 0xA2, 0x00,
-	0x8E, 0x06, 0x20, 0xA2, c1.value, 0x8E, 0x07, 0x20, 0xA2, c2.value, 0x8E, 0x07,
-	0x20, 0xA2, c3.value, 0x8E, 0x07, 0x20, 0xA2, c4.value, 0x8E, 0x07, 0x20, 0xA2,
-	0x0A, 0x8E, 0x01, 0x20, 0x10, 0xFC, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -1562,8 +1748,13 @@ dl.onclick = () => {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x80, 0x00, 0x80, 0x00, 0x80, parseInt(b[0],16), parseInt(b[1],16), parseInt(b[2],16), parseInt(b[3],16),
-	parseInt(b[4],16), parseInt(b[5],16), parseInt(b[6],16), parseInt(b[7],16), parseInt(b[8],16), parseInt(b[9],16), parseInt(b[10],16), parseInt(b[11],16), parseInt(b[12],16), parseInt(b[13],16), parseInt(b[14],16), parseInt(b[15],16),
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -2250,16 +2441,53 @@ dl.onclick = () => {
   
   ];
   
+  for(i = 0; i < bin.length; i++){
+    bytes[16+i] = bin[i];
+  }
+  
   link.href="data:application/octet-stream;base64,"+btoa(String.fromCharCode.apply(!1,new Uint8Array(bytes)))
   link.click();
 }
 
+log = (txt) => {
+  logs2.innerHTML += txt + ": PC:" + PC.toString(16).toUpperCase().padStart(4,0) + " A:" + A.toString(16).toUpperCase().padStart(2,0) + " X:" + X.toString(16).toUpperCase().padStart(2,0) + " Y:" + Y.toString(16).toUpperCase().padStart(2,0) + " P:" + P.toString(2).toUpperCase().padStart(2,0) + " SP:" + S.toString(16).toUpperCase().padStart(2,0) + " CYC:" + ((c)%341).toString().padStart(3," ") + "\n";
+  logs2.style.background = "#efe"
+}
+
+test.onclick = () => {
+  c = 0; 
+  // load ROM
+  for(var i = 0; i < 16384; i++){
+    m[0x8000+i] = bin[i] & 0xff;
+  }
+    
+  // Set PC  
+  PC = 0x8000;
+    
+  // Prepare log output
+  html = "";
+
+  // Reset CPU (kinda)
+  //cycles = 0;
+  S = 0xFD;
+    
+  // Execute All the ROM's official opcodes and log the result
+  // (The unofficial opcodes are tested after the 5003rd instruction)
+  for(i = 0; i < test_nb.value; i++){
+
+    var mylog = PC.toString(16).toUpperCase().padStart(4,0) + " A:" + A.toString(16).toUpperCase().padStart(2,0) + " X:" + X.toString(16).toUpperCase().padStart(2,0) + " Y:" + Y.toString(16).toUpperCase().padStart(2,0) + " P:" + P.toString(16).toUpperCase().padStart(2,0) + " SP:" + S.toString(16).toUpperCase().padStart(2,0) + " CYC:" + ((c*3)%341).toString().padStart(3," "); // nestest counts the ppu cycles of each scanline, hence (c*3)%341
+    
+    op();
+    
+    mylog += " addr:" + a_debug.toString(16).padStart(4,0)
+    
+    html += mylog + "\n";
+  }
+    
+  // Write logs
+  t_test.value = html;
+  
+}
 </script>
 
-
-<style>
-* { user-select: none }
-textarea#chr_bytes { height: 160px; margin: 0 0 0 40px;  font-family: courier, sans-serif;  }
-input#pal_bytes { width: 250px; height: 20px; margin: 0 0 0 40px; font-family: courier, sans-serif; }
-textarea#prg_bytes { width: 1500px; height: 400px; font-family: courier, sans-serif; }
-</style>
+<script src="6502.js"></script>
