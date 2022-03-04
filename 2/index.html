@@ -244,7 +244,7 @@ Trace <input type=number id=test_nb min=1 step=1 value=10> instructions <button 
 
 
 <style>
-textarea { width: 180px; height: 400px }
+textarea { width: 220px; height: 400px }
 #t_js { width: 400px }
 #t_asm { width: 220px }
 td { vertical-align: top }
@@ -572,7 +572,7 @@ onload = compile.onclick = () => {
   error = 0;
   eval(t_js.value);
   t_asm.innerHTML = asm.join("\n");
-  t_bin.innerHTML = bin.map(x=>x.toString(16).padStart(2,0)).join(" ");
+  t_bin.innerHTML = bin.map(x=>x.toString(16).padStart(2,0)).join(" ").replace(/(.{24})/g,"$1\n");
 }
 
 dl.onclick = () => {
