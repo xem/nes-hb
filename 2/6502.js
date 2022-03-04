@@ -208,7 +208,7 @@ O = [...Array(255)].map((t,o) =>
     ]
 
     // Separator
-    + ";console.log((PC-1).toString(16).padStart(4,0),a.toString(16).padStart(4,0));a_debug=a;"
+    + ";/*console.log((PC-1).toString(16).padStart(4,0),a.toString(16).padStart(4,0));*/a_debug=a;"
 
     // Instructions
     // ------------

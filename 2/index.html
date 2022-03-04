@@ -13,6 +13,14 @@
 <td>
 <p>JS code
 <br><textarea id=t_js spellcheck=false>
+/*
+
+This code doesn't do anything useful yet,
+it just shows all the instructions in the lib.
+
+*/
+
+
 // ADC: A = A + value + C
 ADC(imm, 0xFF);
 ADC(abs, 0x8001);
@@ -37,6 +45,186 @@ BCC(0x7F9D);
 BCC(0x809B);
 BCC(foo);
 
+// BCS: if(C) PC = addr
+BCS(foo);
+
+// BEQ: if(!Z) PC = addr
+BEQ(foo);
+
+// BIT: test bits in memory
+BIT(abs, foo);
+
+// BMI: if(N) PC = addr
+BMI(foo);
+
+// BNE: if(Z) PC = addr
+BNE(foo);
+
+// BPL: if(!N) PC = addr
+BPL(foo);
+
+// BRK: force break
+BRK();
+
+// BVC: if(!V) PC = addr
+BVC(foo);
+
+// BVS: if(V) PC = addr
+BVS(foo);
+
+// CLC: C = 0
+CLC();
+
+// CLD: D = 0
+CLD();
+
+// CLI: I = 0
+CLI();
+
+// CLV: V = 0
+CLV()
+
+// CMP: compare A with a byte in memory
+CMP(imm, 0xFF);
+CMP(abs, 0x8000);
+CMP(absx, 0x8000);
+
+// CPX: compare X with a byte in memory
+CPX(imm, 0xFF);
+CPX(abs, 0x8000);
+
+// CPY: compare Y with a byte in memory
+CPY(imm, 0xFF);
+CPY(abs, 0x8000);
+
+// DEC: decrement a byte in memory
+DEC(abs, 0x1234);
+DEC(absx, 0x1234);
+
+// DEX: decrement X
+DEX();
+
+// DEY: decrement Y
+DEY();
+
+// EOR: A ^= a byte in memory
+// CMP: compare A with a byte in memory
+EOR(imm, 0xFF);
+EOR(abs, 0x8000);
+EOR(absx, 0x8000);
+
+// INC: increment a byte in memory
+INC(abs, 0x1234);
+INC(absx, 0x1234);
+
+// INX: increment X
+INX();
+
+// INY: increment Y
+INY();
+
+// JMP: PC = addr
+JMP(abs, foo);
+
+// JSR: push PC, PC=addr
+JSR(abs, foo);
+
+// LDA: A = a byte in memory
+LDA(imm, 0xFF);
+LDA(abs, 0x8000);
+LDA(absx, 0x8000);
+
+// LDX: X = a byte in memory
+LDX(imm, 0xFF);
+LDX(abs, 0x8000);
+
+// LDY: Y = a byte in memory
+LDY(imm, 0xFF);
+LDY(abs, 0x8000);
+LDY(absx, 0x8000);
+
+// LSR: shift right
+LSR(A);
+LSR(abs, foo);
+LSR(absx, foo);
+
+// NOP: no operation
+NOP();
+
+// ORA: A|= a byte in memory
+ORA(imm, 0xFF);
+ORA(abs, 0x8000);
+ORA(absx, 0x8000);
+
+// PHA: push A
+PHA();
+
+// PHP: push P
+PHP();
+
+// PLA: pull A
+PLA();
+
+// PLP: pull P
+PLP();
+
+// ROL: rotate left
+ROL(A);
+ROL(abs, 0x8000);
+ROL(absx, 0x8000);
+
+// ROR: rotate right
+ROR(A);
+ROR(abs, 0x8000);
+ROR(absx, 0x8000);
+
+// RTI: return from interrupt
+RTI();
+
+// RTS: return from subroutine
+RTS();
+
+// SBC: A = A - a byte in memory - 1 + carry
+SBC(imm, 0xFF);
+SBC(abs, 0x8000);
+SBC(absx, 0x8000);
+
+// SEC: C = 1
+SEC();
+
+// SED: D = 1
+SED();
+
+// SEI: I = 1
+SEI();
+
+// STA: a byte in memory = A
+STA(abs, 0x8000);
+STA(absx, 0x8000);
+
+// STX: a byte in memory = X
+STX(abs,0x8000);
+
+// STY: a byte in memory = Y
+STY(abs,0x8000);
+
+// TAX: X = A
+TAX();
+
+// TAY: Y = A
+TAY();
+
+// TSX: X = S
+TSX();
+
+// TXA: A = X
+TXA();
+
+// TXS: S = X
+TXS();
+
+// TYA: A = Y
+TYA();
 
 </textarea>
 <td>
@@ -109,10 +297,10 @@ arg_asm = (mode, arg) => {
 
 // Add an opcode with implicit, immediate, absolute and absolute+X addressing modes
 opc = (name, opcodes) => {
-  return (mode, arg, tmp) => {
+  return (mode = 0, arg, tmp) => {
     tmp = 0x8000 + bin.length;
     if(!error) bin.push(opcodes[mode], ...arg_bin(mode, arg));
-    if(!error) asm.push(`${tmp.toString(16).padStart(4,0)}: ${name} ${arg_asm(mode, arg)}${(name == "ASL" && mode == 0) ? "A" : ""}`);
+    if(!error) asm.push(`${tmp.toString(16).padStart(4,0)}: ${name} ${arg_asm(mode, arg)}${((name == "ASL" || name == "LSR" || name == "ROL" || name == "ROR" || name == "SBC") && mode == 0) ? "A" : ""}`);
     return tmp;
   }
 }
@@ -150,8 +338,8 @@ ADC = opc("ADC A,", [,0x69, 0x6D, 0x7D]); // name, [imp, imm, abs, absX]
 AND = opc("AND A,", [,0x29, 0x2D, 0x3D]); // name, [imp, imm, abs, absX]
 
 // ASL (shift left)
-// ASL: A byte in memory is left shifted. Flags: N, Z, C
-// ASL A: accumulator is left shifted. Flags: N, Z, C
+// - ASL A: accumulator is left shifted. Flags: N, Z, C
+// - ASL: A byte in memory is left shifted. Flags: N, Z, C
 // The shifted-out bit 7 is saved in C
 ASL = opc("ASL", [0x0A, , 0x0E, 0x1E]); // name, [imp, imm, abs, absX]
 
@@ -212,7 +400,7 @@ CLI = opc("CLI", [0x58, , , ]);
 CLV = opc("CLV", [0xB8, , , ]);
 
 // CMP (compare memory and accumulator)
-// N, Z and C are set with the result of A - a byte in memory
+// N, Z and C are set with the result of A minus a byte in memory
 // Flag C is set if there's no borrow
 CMP = opc("CMP A,", [, 0xC9, 0xCD, 0xDD]); // name, [imp, imm, abs, absX]
 
@@ -232,11 +420,11 @@ DEC = opc("DEC", [, , 0xCE, 0xDE]);
 
 // DEX (decrement X)
 // X is decremented. Flags: N, Z
-DEX = opc("DEX", 0xCA);
+DEX = opc("DEX", [0xCA, , , ]);
 
 // DEY (decrement Y)
 // Y is decremented. Flags: N, Z
-DEY = opc("DEY", 0x88);
+DEY = opc("DEY", [0x88, , , ]);
 
 // EOR (exclusive-or memory and accumulator)
 // A = A XOR a byte in memory. Flags: N, Z
@@ -258,120 +446,124 @@ INY = opc("INY", [0xAC, , , ]);
 // Set a new value to PC
 JMP = opc("JMP", [, , 0x4C, ]);
 
-/*
+// JSR (jump to subroutine)
+// Push PC + 2, PC = absolute address
+JSR = opc("JSR", [, , 0x20, ]);
 
-JSR = () => {
+// LDA (load accumulator with memory)
+// A = a byte from memory. Flags: N, Z
+LDA = opc("LDA", [, 0xA9, 0xAD, 0xBD]);
 
-}
+// LDX (load X with memory)
+// X = a byte from memory. Flags: N, Z
+LDX = opc("LDX", [, 0xA2, 0xAE, ]);
 
-LDA = () => {
+// LDY (load Y with memory)
+// Y = a byte from memory. Flags: N, Z
+LDY = opc("LDY", [, 0xA0, 0xAC, 0xBC]);
 
-}
+// LSR (shift right)
+// - LSR A: A is shifted right. Flags: N, Z, C
+// - LSR: A byte in memory is shifted right. Flags: N, Z, C
+LSR = opc("LSR", [0x4A, , 0x4E, 0x5E]);
 
-LDX = () => {
+// NOP (no operation)
+NOP = opc("NOP", [0xEA, , ,]);
 
-}
+// ORA (OR memory and accumulator)
+// A = A OR a byte in memory. Flags: N, Z. 
+ORA = opc("ORA", [, 0x09, 0x0D, 0x1D]);
 
-LDY = () => {
+// PHA (push accumulator)
+// Push A
+PHA = opc("PHA", [0x48, , , ]);
 
-}
+// PHP (push processor status)
+// Push P with B flag set to 1
+PHP = opc("PHP", [0x08, , , ]);
 
-LSR = () => {
+// PLA (pull accumulator)
+// Pull A. Flags: N, Z.
+PLA = opc("PLA", [0x68, , , ]);
 
-}
+// PLP (pull processor status)
+// Pull P and set all flags
+// (According to nestest, the B flag stays at 0) 
+PLP = opc("PLP", [0x28, , , ]);
 
-NOP = () => {
+// ROL (rotate left)
+// - ROL A (rotate left accumulator): Same as left shift A but C flag is put into bit 0. Flags: N, Z, C
+// - ROL (rotate left a byte in memory): Same as left shift but C flag is put into bit 0. Flags: N, Z, C
+// The shifted-out bit 7 is saved in C
+ROL = opc("ROL", [0x2A, , 0x2E, 0x3E]);
 
-}
+// ROR (rotate right)
+// - ROR A (rotate right accumulator): Same as right shift A but C flag is put into bit 0. Flags: N, Z, C
+// - ROR (rotate right a byte in memory): Same as right shift but C flag is put into bit 0. Flags: N, Z, C
+// The shifted-out bit 0 is saved in C
+ROR = opc("ROR", [0x6A, , 0xEE, 0xFE]);
 
-ORA = () => {
+// RTI (return from interrupt)
+// Pull P, set all flags, pull PC
+RTI = opc("RTI", [0x40, , , ]);
 
-}
+// RTS (return from subroutine)
+// Pull and increment PC
+RTS = opc("RTS", [0x60, , , ]);
 
-PHA = () => {
+// SBC (subtract from accumulator with carry)
+// A = A - a byte from memory - (1 - Carry). Flags: N, Z, C, V
+// Flag C is set if there's no borrow
+// Flag V is set if the subtraction is incorrectly considered positive
+SBC = opc("SBC", [, 0xE9, 0xED, 0xFD]);
 
-}
+// SEC (set carry flag)
+// C is set to 1
+SEC = opc("SEC", [0x38, , , ]);
 
-PHP = () => {
+// SED (set decomal flag)
+// D is set to 1
+SED = opc("SED", [0xF8, , , ]);
 
-}
+// SEI (set interrupt disable flag)
+// I is set to 1
+SEI = opc("SEI", [0x78, , , ]);
 
-PLA = () => {
+// STA (store accumulator)
+// A is copied in memory
+STA = opc("STA", [, , 0x8D, 0x9D]);
 
-}
+// STX (store X)
+// X is copied in memory
+STX = opc("STX", [, , 0x8E, ]);
 
-PLP = () => {
+// STY (store Y)
+// Y is copied in memory
+STY = opc("STY", [, , 0x8C, ]);
 
-}
+// TAX (transfer accumulator to X)
+// X = A. Flags: N, Z
+TAX = opc("TAX", [0xAA, , , ]);
 
-ROL = () => {
+// TAY (transfer accumulator to Y)
+// Y = A. Flags: N, Z
+TAY = opc("TAY", [0xA8, , , ]);
 
-}
+// TSX (transfer stack pointer to X)
+// X = S. Flags: N, Z
+TSX = opc("TSX", [0xBA, , , ]);
 
-ROR = () => {
+// TXA (transfer X to accumulator)
+// A = X. Flags: N, Z
+TXA = opc("TXA", [0x8A, , , ]);
 
-}
+// TXS (transfer X to stack pointer)
+// Stack pointer = X
+TXS = opc("TXS", [0x9A, , , ]);
 
-RTI = () => {
-
-}
-
-RTS = () => {
-
-}
-
-SBC = () => {
-
-}
-
-SEC = () => {
-
-}
-
-SED = () => {
-
-}
-
-SEI = () => {
-
-}
-
-STA = () => {
-
-}
-
-STX = () => {
-
-}
-
-STY = () => {
-
-}
-
-TAX = () => {
-
-}
-
-TAY = () => {
-
-}
-
-TSX = () => {
-
-}
-
-TXA = () => {
-
-}
-
-TXS = () => {
-
-}
-
-TYA = () => {
-
-}
-*/
+// TYA (transfer Y to accumulator)
+// A = Y. Flags: N, Z
+TYA = opc("TYA", [0x98, , , ]);
 
 
 onload = compile.onclick = () => {
