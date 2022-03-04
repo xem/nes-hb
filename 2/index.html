@@ -2,10 +2,14 @@
 <h2>NES homebrew experiment #2: compile JS code into a NES rom</h2>
 <h3>Goal</h3>
 <ul>
-<li>Make a JS lib containing a function for each opcode of the NES's CPU.
+<li>Write a JS function for each opcode of the NES's CPU.
 <br>(For now, only the implicit, immediate, relative, absolute and absolute+X addressing modes are supported)
-<li>Each function returns its address in the CPU memory (to ease jumps and branches) and outputs asm / binary code.
+<br>Each function returns its address in the CPU memory (to ease jumps and branches) and outputs asm / binary code.
+<li>Write JS functions to interact with memory, PPU, APU and controllers (also, later: interact with mappers)
 </ul>
+<br>
+Demos: <button id=l0>Level 0: ASM</button> <button id=l1>Level 1: registers</button>
+<br>
 <br>
 <br>
 <table>
@@ -13,219 +17,6 @@
 <td>
 <p>JS code
 <br><textarea id=t_js spellcheck=false>
-/*
-
-This code doesn't do anything useful yet,
-it just shows all the instructions in the lib.
-
-*/
-
-
-// ADC: A = A + value + C
-ADC(imm, 0xFF);
-ADC(abs, 0x8001);
-ADC(absx, 0x8002);
-
-// AND: A = A & value
-AND(imm, 0xFF);
-AND(abs, 0x8001);
-AND(absx, 0x8002);
-
-// ASL A: left shift A
-foo = ASL(A);
-
-// ASL: left shift value
-ASL(abs, 0x8001);
-ASL(absx, 0x8002);
-
-// BCC: if(!C) PC = addr
-BCC(0x8005);
-BCC(0x8020);
-BCC(0x7F9D);
-BCC(0x809B);
-BCC(foo);
-
-// BCS: if(C) PC = addr
-BCS(foo);
-
-// BEQ: if(!Z) PC = addr
-BEQ(foo);
-
-// BIT: test bits in memory
-BIT(abs, foo);
-
-// BMI: if(N) PC = addr
-BMI(foo);
-
-// BNE: if(Z) PC = addr
-BNE(foo);
-
-// BPL: if(!N) PC = addr
-BPL(foo);
-
-// BRK: force break
-BRK();
-
-// BVC: if(!V) PC = addr
-BVC(foo);
-
-// BVS: if(V) PC = addr
-BVS(foo);
-
-// CLC: C = 0
-CLC();
-
-// CLD: D = 0
-CLD();
-
-// CLI: I = 0
-CLI();
-
-// CLV: V = 0
-CLV()
-
-// CMP: compare A with a byte in memory
-CMP(imm, 0xFF);
-CMP(abs, 0x8000);
-CMP(absx, 0x8000);
-
-// CPX: compare X with a byte in memory
-CPX(imm, 0xFF);
-CPX(abs, 0x8000);
-
-// CPY: compare Y with a byte in memory
-CPY(imm, 0xFF);
-CPY(abs, 0x8000);
-
-// DEC: decrement a byte in memory
-DEC(abs, 0x1234);
-DEC(absx, 0x1234);
-
-// DEX: decrement X
-DEX();
-
-// DEY: decrement Y
-DEY();
-
-// EOR: A ^= a byte in memory
-// CMP: compare A with a byte in memory
-EOR(imm, 0xFF);
-EOR(abs, 0x8000);
-EOR(absx, 0x8000);
-
-// INC: increment a byte in memory
-INC(abs, 0x1234);
-INC(absx, 0x1234);
-
-// INX: increment X
-INX();
-
-// INY: increment Y
-INY();
-
-// JMP: PC = addr
-JMP(abs, foo);
-
-// JSR: push PC, PC=addr
-JSR(abs, foo);
-
-// LDA: A = a byte in memory
-LDA(imm, 0xFF);
-LDA(abs, 0x8000);
-LDA(absx, 0x8000);
-
-// LDX: X = a byte in memory
-LDX(imm, 0xFF);
-LDX(abs, 0x8000);
-
-// LDY: Y = a byte in memory
-LDY(imm, 0xFF);
-LDY(abs, 0x8000);
-LDY(absx, 0x8000);
-
-// LSR: shift right
-LSR(A);
-LSR(abs, foo);
-LSR(absx, foo);
-
-// NOP: no operation
-NOP();
-
-// ORA: A|= a byte in memory
-ORA(imm, 0xFF);
-ORA(abs, 0x8000);
-ORA(absx, 0x8000);
-
-// PHA: push A
-PHA();
-
-// PHP: push P
-PHP();
-
-// PLA: pull A
-PLA();
-
-// PLP: pull P
-PLP();
-
-// ROL: rotate left
-ROL(A);
-ROL(abs, 0x8000);
-ROL(absx, 0x8000);
-
-// ROR: rotate right
-ROR(A);
-ROR(abs, 0x8000);
-ROR(absx, 0x8000);
-
-// RTI: return from interrupt
-RTI();
-
-// RTS: return from subroutine
-RTS();
-
-// SBC: A = A - a byte in memory - 1 + carry
-SBC(imm, 0xFF);
-SBC(abs, 0x8000);
-SBC(absx, 0x8000);
-
-// SEC: C = 1
-SEC();
-
-// SED: D = 1
-SED();
-
-// SEI: I = 1
-SEI();
-
-// STA: a byte in memory = A
-STA(abs, 0x8000);
-STA(absx, 0x8000);
-
-// STX: a byte in memory = X
-STX(abs,0x8000);
-
-// STY: a byte in memory = Y
-STY(abs,0x8000);
-
-// TAX: X = A
-TAX();
-
-// TAY: Y = A
-TAY();
-
-// TSX: X = S
-TSX();
-
-// TXA: A = X
-TXA();
-
-// TXS: S = X
-TXS();
-
-// TYA: A = Y
-TYA();
-
 </textarea>
 <td>
 <p>ASM
@@ -244,11 +35,11 @@ Trace <input type=number id=test_nb min=1 step=1 value=10> instructions <button 
 
 
 <style>
-textarea { width: 220px; height: 400px }
-#t_js { width: 400px }
-#t_asm { width: 220px }
+textarea { width: 220px; height: 350px }
+#t_js { width: 470px }
+#t_asm { width: 200px }
 td { vertical-align: top }
-#t_test { width: 800px; height: 100px; }
+#t_test { width: 900px; height: 100px; }
 #test_nb { width: 50px }
 
 </style>
@@ -264,6 +55,7 @@ A = 0;
 imm = 1;
 abs = 2;
 absx = 3;
+pc = 0;
 
 // Complete the binary opcode with the right argument according to the addressing mode
 arg_bin = (mode, arg) => {
@@ -297,10 +89,11 @@ arg_asm = (mode, arg) => {
 
 // Add an opcode with implicit, immediate, absolute and absolute+X addressing modes
 opc = (name, opcodes) => {
-  return (mode = 0, arg, tmp) => {
+  return (mode = 0, arg, tmp, tmp2=[]) => {
     tmp = 0x8000 + bin.length;
-    if(!error) bin.push(opcodes[mode], ...arg_bin(mode, arg));
+    if(!error) bin.push(opcodes[mode], ...(tmp2 = arg_bin(mode, arg)));
     if(!error) asm.push(`${tmp.toString(16).padStart(4,0)}: ${name} ${arg_asm(mode, arg)}${((name == "ASL" || name == "LSR" || name == "ROL" || name == "ROR" || name == "SBC") && mode == 0) ? "A" : ""}`);
+    pc = tmp + 1 + tmp2.length;
     return tmp;
   }
 }
@@ -566,9 +359,10 @@ TXS = opc("TXS", [0x9A, , , ]);
 TYA = opc("TYA", [0x98, , , ]);
 
 
-onload = compile.onclick = () => {
+onload = compile.onclick = f_compile = () => {
   bin = [];
   asm = [];
+  pc = 0;
   error = 0;
   eval(t_js.value);
   t_asm.innerHTML = asm.join("\n");
@@ -2679,6 +2473,318 @@ test.onclick = () => {
   // Write logs
   t_test.value = html;
   
+}
+
+l0.onclick = () => {
+  t_js.innerHTML = `/*
+
+JS-NES compiler, level 0: ASM.
+This code doesn't do anything useful yet,
+it just shows how all the instructions can be called.
+Tips:
+- Each function returns its address.
+- \`pc\` contains the current instruction's address.
+*/
+
+
+// ADC: A = A + value + C
+foo = ADC(imm, 0xFF);
+ADC(abs, 0x8001);
+ADC(absx, 0x8002);
+ADC(abs, pc); // $8008
+ADC(abs, foo); // $8000
+
+// AND: A = A & value
+AND(imm, 0xFF);
+AND(abs, 0x8001);
+AND(absx, 0x8002);
+
+// ASL A: left shift A
+ASL(A); // (A is optional)
+
+// ASL: left shift value
+ASL(abs, 0x8001);
+ASL(absx, 0x8002);
+
+// BCC: if(!C) PC = addr
+// B** instructions point to a relative address.
+// Relative address are between pc-127 and pc+128.
+// Invalid address: compilation stops, error is logged.
+BCC(0x8005);
+BCC(0x8020);
+BCC(0x7FA2);
+BCC(0x809D);
+BCC(foo);
+
+// BCS: if(C) PC = addr
+BCS(foo);
+
+// BEQ: if(!Z) PC = addr
+BEQ(foo);
+
+// BIT: test bits in memory
+BIT(abs, foo);
+
+// BMI: if(N) PC = addr
+BMI(foo);
+
+// BNE: if(Z) PC = addr
+BNE(foo);
+
+// BPL: if(!N) PC = addr
+BPL(foo);
+
+// BRK: force break
+BRK();
+
+// BVC: if(!V) PC = addr
+BVC(foo);
+
+// BVS: if(V) PC = addr
+BVS(foo);
+
+// CLC: C = 0
+CLC();
+
+// CLD: D = 0
+CLD();
+
+// CLI: I = 0
+CLI();
+
+// CLV: V = 0
+CLV()
+
+// CMP: compare A with a byte in memory
+CMP(imm, 0xFF);
+CMP(abs, 0x8000);
+CMP(absx, 0x8000);
+
+// CPX: compare X with a byte in memory
+CPX(imm, 0xFF);
+CPX(abs, 0x8000);
+
+// CPY: compare Y with a byte in memory
+CPY(imm, 0xFF);
+CPY(abs, 0x8000);
+
+// DEC: decrement a byte in memory
+DEC(abs, 0x1234);
+DEC(absx, 0x1234);
+
+// DEX: decrement X
+DEX();
+
+// DEY: decrement Y
+DEY();
+
+// EOR: A ^= a byte in memory
+// CMP: compare A with a byte in memory
+EOR(imm, 0xFF);
+EOR(abs, 0x8000);
+EOR(absx, 0x8000);
+
+// INC: increment a byte in memory
+INC(abs, 0x1234);
+INC(absx, 0x1234);
+
+// INX: increment X
+INX();
+
+// INY: increment Y
+INY();
+
+// JMP: PC = addr
+JMP(abs, foo);
+JMP(abs, pc); // infinite loop
+
+// JSR: push PC, PC = addr
+JSR(abs, foo);
+
+// LDA: A = a byte in memory
+LDA(imm, 0xFF);
+LDA(abs, 0x8000);
+LDA(absx, 0x8000);
+
+// LDX: X = a byte in memory
+LDX(imm, 0xFF);
+LDX(abs, 0x8000);
+
+// LDY: Y = a byte in memory
+LDY(imm, 0xFF);
+LDY(abs, 0x8000);
+LDY(absx, 0x8000);
+
+// LSR: shift right
+LSR(A); // (A is optional)
+LSR(abs, foo);
+LSR(absx, foo);
+
+// NOP: no operation
+NOP();
+
+// ORA: A|= a byte in memory
+ORA(imm, 0xFF);
+ORA(abs, 0x8000);
+ORA(absx, 0x8000);
+
+// PHA: push A
+PHA();
+
+// PHP: push P
+PHP();
+
+// PLA: pull A
+PLA();
+
+// PLP: pull P
+PLP();
+
+// ROL: rotate left
+ROL(A); // (A is optional)
+ROL(abs, 0x8000);
+ROL(absx, 0x8000);
+
+// ROR: rotate right
+ROR(A); // (A is optional)
+ROR(abs, 0x8000);
+ROR(absx, 0x8000);
+
+// RTI: return from interrupt
+RTI();
+
+// RTS: return from subroutine
+RTS();
+
+// SBC: A = A - a byte in memory - 1 + carry
+SBC(imm, 0xFF);
+SBC(abs, 0x8000);
+SBC(absx, 0x8000);
+
+// SEC: C = 1
+SEC();
+
+// SED: D = 1
+SED();
+
+// SEI: I = 1
+SEI();
+
+// STA: a byte in memory = A
+STA(abs, 0x8000);
+STA(absx, 0x8000);
+
+// STX: a byte in memory = X
+STX(abs,0x8000);
+
+// STY: a byte in memory = Y
+STY(abs,0x8000);
+
+// TAX: X = A
+TAX();
+
+// TAY: Y = A
+TAY();
+
+// TSX: X = S
+TSX();
+
+// TXA: A = X
+TXA();
+
+// TXS: S = X
+TXS();
+
+// TYA: A = Y
+TYA();
+  
+`;
+  f_compile();
+}
+
+l1.onclick = () => {
+  t_js.innerHTML = `// Interact with the PPU
+// =====================
+
+// Choose in which screen scroll takes place (0-3)
+scroll_screen(0); // default
+scroll_screen(1);
+scroll_screen(2);
+scroll_screen(3);
+
+// Choose VRAM address increments after a read/write (1/32)
+vram_increment(1); // default
+vram_increment(32);
+
+// Choose sprite/background pattern table (1/2)
+sprite_pattern_table(0); //default
+sprite_pattern_table(1);
+background_pattern_table(0); // default
+background_pattern_table(1);
+
+// Choose sprite size (simple: 8*8px, double: 8*16px)
+double_sprite_size(true);
+double_sprite_size(false); // default
+
+// Call NMI interrupt/subroutine on VBlank
+nmi_on_vblank(true);
+nmi_on_vblank(false); // default
+
+// Greyscale output only
+greyscale(true);
+geyscale(false); // default
+
+// Show sprite/background everywhere/on leftmost column
+show_sprites(false); // default
+show_sprites(true);
+show_background(false); // default
+show_background(true);
+show_sprite_left(true);
+show_sprite_left(false); // default
+show_background_left(true);
+show_background_left(false); // default
+
+// Read VBlank flag
+vblank(); // true on line 241, false after read/on line -1
+
+// Read Sprite 0 hit flag
+sprite_0_hit(); // true if sprite 0 touches non-empty BG
+
+// Read sprite overflow flag
+sprite_overflow(); // true if > 8 sprites per line
+
+// Set OAM address (OAM memory: 0-255)
+oam_address(addr = 0); // default
+
+// Write a byte in OAM memory then increment OAM address
+oam_write(value = 0xFF);
+oam_write(value = 0xFE);
+oam_write(value = 0xFD);
+oam_write(value = 0xFC);
+
+// Read a byte in OAM memory at current OAM address
+value = oam_read();
+
+// Set PPUSCROLL register
+scroll(x = 0, y = 0); // default
+
+// Set PPU address (warning: it impacts scroll!)
+ppu_address(0); // default
+ppu_address(0x2000);
+
+// Write a byte in PPU memory then PPU address += 1 or 32
+ppu_write(value = 0xFF);
+
+// Read a byte at current PPU address,
+// then PPUaddress += 1 or 32
+// warning: reads between $0000 and $3EFF are buffered
+value = ppu_read();
+
+// Write 256 bytes from CPU memory in OAM memory at once
+oam_dma(page = 0); // copy from CPU address = page * 0x100
+
+`;
+  f_compile();
 }
 </script>
 
