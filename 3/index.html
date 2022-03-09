@@ -11,7 +11,7 @@
 <tr>
 <th>View 1: 8x8px tiles
 <th>View 2: 8x16px sprites
-<th>Editor <span id=info style="font-weight:normal">(tile #0 / sprite #0)</span> 
+<th>Editor <span id=info style="font-weight:normal">(tile 0-0 / sprite 0)</span> 
 <tr>
 <td>
 <canvas id=c1 width=256 height=512></canvas>
@@ -22,10 +22,10 @@
 <br>
 <br>
 Color:
-<button id=color0 style="background:#000;color:#fff">0</button>
-<button id=color1 style="background:#555;color:#fff">1</button>
-<button id=color2 style="background:#aaa">2</button>
-<button id=color3 style="background:#fff">3</button>
+<button id=color0 style="padding:5px 10px;background:#000;color:#fff;border:4px solid #F00">0</button>
+<button id=color1 style="padding:5px 10px;background:#555;color:#fff;border:4px solid #888">1</button>
+<button id=color2 style="padding:5px 10px;background:#aaa;border:4px solid #888">2</button>
+<button id=color3 style="padding:5px 10px;background:#fff;border:4px solid #888">3</button>
 <br><br>
 <button id=clear>Reset tile</button> 
 <button id=clearall>Reset all</button>
@@ -37,13 +37,18 @@ Color:
 
 <style>
 canvas { background: #000; cursor: crosshair}
-td { vertical-align: top; width: 265px; }
+td { vertical-align: top; width: 275px; }
+th { font-size: 14px }
+th span { font-size: 11px }
+button { cursor: pointer }
 </style>
 
 <script>
 x1 = c1.getContext("2d");
 x2 = c2.getContext("2d");
 x3 = c3.getContext("2d");
+
+t = 0; // current tile (0-511)
 
 grid = () => {
   x1.fillStyle =
@@ -57,20 +62,11 @@ grid = () => {
     x2.fillRect(-.5, i*32 - .5, 512, .5);
     x3.fillRect(-.5, i*32 - .5, 512, .5);
   }
-};
-
-grid();
-
-pick = (tile, lx, ly, rx, ry) => {
-
+  x1.fillStyle = "#9F9";
+  x1.fillRect(0,256-.5,256,.5);
   
-  c1.width ^= 0;
-  c2.width ^= 0;
-  c3.width ^= 0;
-  grid();
-  
-  lx = tile % 16;
-  ly = tile / 16 | 0;
+  lx = t % 16;
+  ly = t / 16 | 0;
   
   x1.strokeStyle = "#f00";
   x1.rect(lx*16+.5,ly*16+.5,16,16);
@@ -84,7 +80,56 @@ pick = (tile, lx, ly, rx, ry) => {
   x2.rect(rx*16+.5,ry*16+.5,16,16);
   x2.stroke();
   
-  info.innerHTML = `(tile #${ly * 16 + lx} / sprite #${(ry / 2 | 0) * 16 + rx})`;
+};
+
+grid();
+
+px = [];
+bin = [];
+
+reset = (i) => {
+  px = [];
+  bin = [];
+  for(i = 0; i < 512; i++){
+    px[i] = [];
+    bin[i] = [];
+  }
+}
+
+reset();
+
+render = (i, j, x, y, col, lx, ly, rx, ry) => {
+  for(i in px){
+  
+    lx = (+i) % 16;
+    ly = (+i) / 16 | 0;
+    
+    ry = ly + (lx % 2) - (ly % 2);
+    rx = lx / 2 | 0 + (ly % 2) * 8;
+    
+    for(j in px[i]){
+      x = j % 8;
+      y = j / 8 | 0;
+      col = cols[px[i][j]];
+      x1.fillStyle = x2.fillStyle = x3.fillStyle = col;
+      x1.fillRect(lx*16 + x*2, ly*16 + y*2, 2, 2);
+      x2.fillRect(rx*16 + x*2, ry*16 + y*2, 2, 2);
+      if(i == t) x3.fillRect(x*32, y*32, 32, 32);
+    }
+  }
+}
+
+pick = (tile, lx, ly, rx, ry) => {
+
+  t = tile;
+  
+  c1.width ^= 0;
+  c2.width ^= 0;
+  c3.width ^= 0;
+  render();
+  grid();
+  
+  info.innerHTML = `(tile ${ly > 16 ? 1 : 0}-${(ly % 16) * 16 + lx} / sprite ${(ry / 2 | 0) * 16 + rx})`;
 }
 
 pick(0,0);
@@ -111,5 +156,67 @@ c2.onclick = (e, x, y) => {
     ? ((y-1) * 16 + ((x * 2) % 16) + (x >= 8 ? 16 : 0) + 1)
     : (y * 16 + ((x * 2) % 16) + (x >= 8 ? 16 : 0))
   );
+}
+
+col = 0;
+color0.onclick = () => {
+  col = 0;
+  color0.style.border = "4px solid #f00";
+  color1.style.border = "4px solid #888";
+  color2.style.border = "4px solid #888";
+  color3.style.border = "4px solid #888";
+}
+color1.onclick = () => {
+  col = 1;
+  color1.style.border = "4px solid #f00";
+  color0.style.border = "4px solid #888";
+  color2.style.border = "4px solid #888";
+  color3.style.border = "4px solid #888";
+}
+color2.onclick = () => {
+  col = 2;
+  color2.style.border = "4px solid #f00";
+  color0.style.border = "4px solid #888";
+  color1.style.border = "4px solid #888";
+  color3.style.border = "4px solid #888";
+}
+color3.onclick = () => {
+  col = 3;
+  color3.style.border = "4px solid #f00";
+  color0.style.border = "4px solid #888";
+  color1.style.border = "4px solid #888";
+  color2.style.border = "4px solid #888";
+}
+
+md = 0;
+onmousedown = () => md = 1;
+onmouseup = () => md = 0;
+onmousemove = (e, x, y) => { 
+  if(md && e.target.id === "c3"){
+    x = e.offsetX/32|0;
+    y = e.offsetY/32|0;
+    trace(t, col, x, y);
+  }
+}
+
+onclick = (e, x, y) => { 
+  if(e.target.id === "c3"){
+    x = e.offsetX/32|0;
+    y = e.offsetY/32|0;
+    trace(t, col, x, y);
+  }
+}
+
+cols = ["#000","#555","#aaa","#fff"];
+
+trace = (tile, col, x, y) => {
+  console.log(tile, col, x, y, px[tile], bin[tile]);
+  px[tile][y*8+x] = col;
+  // bin: todo;
+  c1.width ^= 0;
+  c2.width ^= 0;
+  c3.width ^= 0;
+  render();
+  grid();
 }
 </script>
