@@ -1,0 +1,115 @@
+<tt>
+<h2>NES homebrew tools, step 3: tile editor</h2>
+<p>NES games expose two 4kb graphic banks (CHR-ROM) to the PPU.
+<br>Each bank can either represent 256 8*8px tiles or 128 8*16px sprites.
+<br>The editor below shows these two views. Click a tile to edit it.
+<br>Tiles can use 4 colors (depending on the palettes used). Color 0 = transparent.
+<br>
+<br>
+<br>
+<table>
+<tr>
+<th>View 1: 8x8px tiles
+<th>View 2: 8x16px sprites
+<th>Editor <span id=info style="font-weight:normal">(tile #0 / sprite #0)</span> 
+<tr>
+<td>
+<canvas id=c1 width=256 height=512></canvas>
+<td>
+<canvas id=c2 width=256 height=512></canvas>
+<td>
+<canvas id=c3 width=256 height=256></canvas>
+<br>
+<br>
+Color:
+<button id=color0 style="background:#000;color:#fff">0</button>
+<button id=color1 style="background:#555;color:#fff">1</button>
+<button id=color2 style="background:#aaa">2</button>
+<button id=color3 style="background:#fff">3</button>
+<br><br>
+<button id=clear>Reset tile</button> 
+<button id=clearall>Reset all</button>
+<button id=download>Download</button>
+<br><br>
+<button id=numbers>Add numbers 0-9</button> 
+<button id=alphabet>Add letters A-Z</button>
+</table>
+
+<style>
+canvas { background: #000; cursor: crosshair}
+td { vertical-align: top; width: 265px; }
+</style>
+
+<script>
+x1 = c1.getContext("2d");
+x2 = c2.getContext("2d");
+x3 = c3.getContext("2d");
+
+grid = () => {
+  x1.fillStyle =
+  x2.fillStyle =
+  x3.fillStyle = "#f99";
+  for(i = 0; i < 32; i++){
+    x1.fillRect(i*16 - .5, - .5, .5, 512);
+    x2.fillRect(i*16 - .5, - .5, .5, 512);
+    x3.fillRect(i*32 - .5, - .5, .5, 512);
+    x1.fillRect(-.5, i*16 - .5, 512, .5);
+    x2.fillRect(-.5, i*32 - .5, 512, .5);
+    x3.fillRect(-.5, i*32 - .5, 512, .5);
+  }
+};
+
+grid();
+
+pick = (tile, lx, ly, rx, ry) => {
+
+  
+  c1.width ^= 0;
+  c2.width ^= 0;
+  c3.width ^= 0;
+  grid();
+  
+  lx = tile % 16;
+  ly = tile / 16 | 0;
+  
+  x1.strokeStyle = "#f00";
+  x1.rect(lx*16+.5,ly*16+.5,16,16);
+  x1.stroke();
+  
+  ry = ly + (lx % 2) - (ly % 2);
+  rx = lx / 2 | 0 + (ly % 2) * 8;
+  
+  
+  x2.strokeStyle = "#f00";
+  x2.rect(rx*16+.5,ry*16+.5,16,16);
+  x2.stroke();
+  
+  info.innerHTML = `(tile #${ly * 16 + lx} / sprite #${(ry / 2 | 0) * 16 + rx})`;
+}
+
+pick(0,0);
+
+c1.onclick = (e, x, y) => {
+  x = e.offsetX;
+  y = e.offsetY;
+  
+  x = (~~(x/16));
+  y = (~~(y/16));
+  
+  pick(y * 16 + x);
+}
+
+c2.onclick = (e, x, y) => {
+  x = e.offsetX;
+  y = e.offsetY;
+  
+  x = (~~(x/16));
+  y = (~~(y/16));
+  
+  pick(
+    (y % 2)
+    ? ((y-1) * 16 + ((x * 2) % 16) + (x >= 8 ? 16 : 0) + 1)
+    : (y * 16 + ((x * 2) % 16) + (x >= 8 ? 16 : 0))
+  );
+}
+</script>
