@@ -18,7 +18,7 @@
 <td>
 <canvas id=c2 width=256 height=512></canvas>
 <td>
-<canvas id=c3 width=256 height=256></canvas>
+<canvas id=c3 width=255 height=255></canvas>
 <br>
 <br>
 Color:
@@ -27,20 +27,30 @@ Color:
 <button id=color2 style="padding:5px 10px;background:#aaa;border:4px solid #888">2</button>
 <button id=color3 style="padding:5px 10px;background:#fff;border:4px solid #888">3</button>
 <br><br>
-<button id=clear>Reset tile</button> 
-<button id=clearall>Reset all</button>
-<button id=download>Download</button>
-<br><br>
-<button id=numbers>Add numbers 0-9</button> 
-<button id=alphabet>Add letters A-Z</button>
+Reset: <button id=clear>tile</button> <button id=clearall>all</button>
+/
+Add: <button id=numbers>0-9</button> <button id=alphabet>A-Z</button>
+
+<p>
+
+Save/load:
+
+<p><textarea id=output>00</textarea>
+
 </table>
 
+
+
 <style>
-canvas { background: #000; cursor: crosshair}
+* { box-sizing: border-box; }
+body { user-select: none }
+table { min-width: 835px }
+canvas { background: #000; border:1px solid #000;cursor: crosshair}
 td { vertical-align: top; width: 275px; }
 th { font-size: 14px }
 th span { font-size: 11px }
 button { cursor: pointer }
+textarea { width: 240px; height: 130px; padding: 5px 10px; }
 </style>
 
 <script>
@@ -87,18 +97,29 @@ grid();
 px = [];
 bin = [];
 
-reset = (i) => {
+reset = (i,j) => {
   px = [];
   bin = [];
   for(i = 0; i < 512; i++){
     px[i] = [];
     bin[i] = [];
+    output.innerHTML = "00 ".repeat(8*1024).replace(/.{24}/g,"$&\n");
+    for(j = 0; j < 16; j++){
+      bin[i][j] = 0;
+    }
+    for(j = 0; j < 64; j++){
+      px[i][j] = 0;
+    }
   }
 }
 
 reset();
 
+cols = ["#000","#555","#aaa","#fff"];
+
 render = (i, j, x, y, col, lx, ly, rx, ry) => {
+
+  // for each tile
   for(i in px){
   
     lx = (+i) % 16;
@@ -107,6 +128,7 @@ render = (i, j, x, y, col, lx, ly, rx, ry) => {
     ry = ly + (lx % 2) - (ly % 2);
     rx = lx / 2 | 0 + (ly % 2) * 8;
     
+    // For each pixel
     for(j in px[i]){
       x = j % 8;
       y = j / 8 | 0;
@@ -115,6 +137,12 @@ render = (i, j, x, y, col, lx, ly, rx, ry) => {
       x1.fillRect(lx*16 + x*2, ly*16 + y*2, 2, 2);
       x2.fillRect(rx*16 + x*2, ry*16 + y*2, 2, 2);
       if(i == t) x3.fillRect(x*32, y*32, 32, 32);
+      if(i == 0 && px[i][j] > 1){
+        bin[i][y] |= 1 << (7 - x);
+      }
+      if(i == 0 && px[i][j] % 2){
+        bin[i][y+8] |= 1 << (7 - x);
+      }
     }
   }
 }
@@ -122,6 +150,12 @@ render = (i, j, x, y, col, lx, ly, rx, ry) => {
 pick = (tile, lx, ly, rx, ry) => {
 
   t = tile;
+  
+  lx = (+tile) % 16;
+  ly = (+tile) / 16 | 0;
+  
+  ry = ly + (lx % 2) - (ly % 2);
+  rx = lx / 2 | 0 + (ly % 2) * 8;
   
   c1.width ^= 0;
   c2.width ^= 0;
@@ -190,7 +224,11 @@ color3.onclick = () => {
 
 md = 0;
 onmousedown = () => md = 1;
-onmouseup = () => md = 0;
+onmouseup = () => {
+  md = 0;
+  output.innerHTML = bin.map(x=>x.map(x=>x.toString(16).padStart(2,0)).join(" ")).join(" ").replace(/.{24}/g,"$&\n");
+}
+
 onmousemove = (e, x, y) => { 
   if(md && e.target.id === "c3"){
     x = e.offsetX/32|0;
@@ -204,19 +242,44 @@ onclick = (e, x, y) => {
     x = e.offsetX/32|0;
     y = e.offsetY/32|0;
     trace(t, col, x, y);
+    output.innerHTML = bin.map(x=>x.map(x=>x.toString(16).padStart(2,0)).join(" ")).join(" ").replace(/.{24}/g,"$&\n");
   }
 }
 
-cols = ["#000","#555","#aaa","#fff"];
 
 trace = (tile, col, x, y) => {
-  console.log(tile, col, x, y, px[tile], bin[tile]);
-  px[tile][y*8+x] = col;
-  // bin: todo;
+  if(px[tile][y*8+x] != col){
+    px[tile][y*8+x] = col;
+    c1.width ^= 0;
+    c2.width ^= 0;
+    c3.width ^= 0;
+    render();
+    grid();
+  }
+}
+
+clear.onclick = () => {
+  px[t] = [];
+  bin[t] = [];
   c1.width ^= 0;
   c2.width ^= 0;
   c3.width ^= 0;
   render();
   grid();
+}
+
+clearall.onclick = (i) => {
+  if(confirm("Are you sure?")){
+    reset();
+    c1.width ^= 0;
+    c2.width ^= 0;
+    c3.width ^= 0;
+    render();
+    grid();
+  }
+}
+
+output.oninput = () => {
+  console.log("input");
 }
 </script>
