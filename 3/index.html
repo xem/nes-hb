@@ -39,6 +39,11 @@ Save/load:
 
 </table>
 
+<br>
+<br>
+Load tiles from NES rom: <input type=file id=rom hidden> <button onclick='rom.click()'>browse...</button>
+<span id=rombanks></span>
+
 
 
 <style>
@@ -365,6 +370,62 @@ c6 ee 7c 38 7c ee c6 00 00 00 00 00 00 00 00 00
 fe 0e 1c 38 70 e0 fe 00 00 00 00 00 00 00 00 00
 `;
     output.oninput();
+  }
+}
+
+// parse iNES rom
+var
+chr_rom_banks,
+chr_rom,
+offset,
+parse_rom = (data, i, j) => {
+
+  //console.log(data);
+  
+  if(data.includes("NES")){
+    //mirroring = (data.charCodeAt(6) & 0b00001000) ? 2 : (data.charCodeAt(6) & 0b0000001) ? 0 : 1;
+    //mapper = (data.charCodeAt(6) >> 4) + (data.charCodeAt(7) & 0b11110000);
+    offset = 16;
+    if(data.charCodeAt(6) & 0b00000100) offset += 512;
+    //prg_rom = [];
+    for(i = 0; i < data.charCodeAt(4); i++){
+      //prg_rom[i] = [];
+      for(j = 0; j < 16 * 1024; j++){
+        offset++; //prg_rom[i][j] = data.charCodeAt(offset++) & 0xff;
+      }
+    }
+    
+    // Load the CHR-ROM pages
+    // The number of pairs of 4KB CHR-ROM pages is stored on byte 5 of the header
+    // Each bank contains 256 8*8px, 4-color bitmap tiles
+    chr_rom = [];
+    for(i = 0; i < (chr_rom_banks = data.charCodeAt(5)); i++){
+      chr_rom[i] = [];
+      for(j = 0; j < 8 * 1024; j++){
+        chr_rom[i][j] = data.charCodeAt(offset++) & 0xff;
+      }
+    }
+  }
+}
+
+show_bank = i => {
+  //if(confirm("This will overwrite the tiles above. Are you sure?")){
+    output.value = chr_rom[i].map(a=>a.toString(16).padStart(2,0)).join(" ");
+    output.oninput();
+  //}
+}
+
+// Load ROM from file input
+rom.onchange = (e, i) => {
+  var fileReader = new FileReader();
+  fileReader.readAsBinaryString(rom.files[0]);
+  fileReader.onload = () => {
+    parse_rom(fileReader.result);
+    //console.log(chr_rom);
+    rombanks.innerHTML = "";
+    for(i = 0; i < chr_rom_banks; i++){
+      rombanks.innerHTML += `<button onclick='show_bank(${i})'>bank ${i}</button> `;
+    }
   }
 }
 </script>
