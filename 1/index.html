@@ -114,15 +114,28 @@ chr();
 <input id=pal_bytes spellcheck=false>
 
 <script>
-systemPalette = (
-  "666134124214414413412421441341241142144000000000aaa38a34a53a93aa38a34a53a938a34a33a53a9000000000fff6be67e96ed6ee6be67e96ed6be67e66e96ed555000000fffcefccfdcffcffcefccfdcffcefccfccfdcffbbb000000"
-)
-.match(/.../g)
-.map(c => ("#" + c[0] + c[0] + c[1] + c[1] + c[2] + c[2]));
+systemPalette = [
+  "#737373", "#21188c", "#0000ad", "#42009c",
+  "#8c0073", "#ad0010", "#a50000", "#7b0800",
+  "#422900", "#004200", "#005200", "#003910",
+  "#18395a", "#000000", "#000000", "#000000",
+  "#bdbdbd", "#0073ef", "#2139ef", "#8400f7",
+  "#bd00bd", "#e7005a", "#de2900", "#ce4a08",
+  "#8c7300", "#009400", "#00ad00", "#009439",
+  "#00848c", "#101010", "#000000", "#000000",
+  "#ffffff", "#39bdff", "#5a94ff", "#a58cff",
+  "#f77bff", "#ff73b5", "#ff7363", "#ff9c39",
+  "#f7bd39", "#84d610", "#4ade4a", "#5aff9c",
+  "#00efde", "#393939", "#000000", "#000000",
+  "#ffffff", "#ade7ff", "#c6d6ff", "#d6ceff",
+  "#ffc6ff", "#ffc6de", "#ffbdb5", "#ffdead",
+  "#ffe7a5", "#e7ffa5", "#adf7bd", "#b5ffce",
+  "#9cfff7", "#8c8c8c", "#000000", "#000000"
+];
 
 html = "";
 for(i = 0; i < 64; i++){
-  html += `<option value="${i}" style="background:${systemPalette[i]}">${systemPalette[i]}</option>`
+  html += `<option value="${i}" style="background:${systemPalette[i]};">${systemPalette[i]}</option>`
   c1.innerHTML =
   c2.innerHTML =
   c3.innerHTML =

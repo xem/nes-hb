@@ -1,0 +1,141 @@
+<tt>
+<h2>NES homebrew tools, part 4: palette editor</h2>
+<ul>
+<li>The NES can use two 16-color palettes at any moment. One for backgrounds and one for sprites. They are picked in a 64-color global palette.
+<li>Each palette is divided into 4 subpalettes (containing 4 colors). Each background tile and sprite can only use one subpalette.
+<li>In each subpalette, the color 0 is transparent, except in the first background subpalette, where color 0 is the universal background color.
+<li>Palettes/subpalettes can be modified between frames or mid-frame. Tiles and sprites can also switch subpalettes at any moment.
+<li>There's no official NES color palette (it all depends on how TVs/screens display it). Here I use the 3DS virtual console's palette.
+<li>The editor below allows to create unlimited 16-color palettes. Remember that only one of each (background and sprite) can be used at once.
+</ul>
+<br>
+<br>
+<b>Background palettes
+<p><div id=bg_p>
+
+<div id=bg_0_0" onclick="set('bg', 0, 0)"></div>
+
+</div>
+<button onclick=new_bg()>Add a new background palette</button>
+
+<br><br>
+<br><br>
+<br><br>
+
+<b>Sprite palettes
+<p><div id=sprite_p>
+
+</div>
+<button onclick=new_sprite()>Add a new sprite palette</button>
+
+<div id=modal style="display:none">
+  <div id=dialog>
+    <table id=pal></table>
+  </div>
+</div>
+
+<script>
+bgs = 0;
+sprites = 0;
+
+global_palette = [
+  "#737373", "#21188c", "#0000ad", "#42009c",
+  "#8c0073", "#ad0010", "#a50000", "#7b0800",
+  "#422900", "#004200", "#005200", "#003910",
+  "#18395a", "#000000", "#000000", "#000000",
+  "#bdbdbd", "#0073ef", "#2139ef", "#8400f7",
+  "#bd00bd", "#e7005a", "#de2900", "#ce4a08",
+  "#8c7300", "#009400", "#00ad00", "#009439",
+  "#00848c", "#101010", "#000000", "#000000",
+  "#ffffff", "#39bdff", "#5a94ff", "#a58cff",
+  "#f77bff", "#ff73b5", "#ff7363", "#ff9c39",
+  "#f7bd39", "#84d610", "#4ade4a", "#5aff9c",
+  "#00efde", "#393939", "#000000", "#000000",
+  "#ffffff", "#ade7ff", "#c6d6ff", "#d6ceff",
+  "#ffc6ff", "#ffc6de", "#ffbdb5", "#ffdead",
+  "#ffe7a5", "#e7ffa5", "#adf7bd", "#b5ffce",
+  "#9cfff7", "#8c8c8c", "#000000", "#000000"
+];
+
+onload = (html, i, j) => {
+  html = "";
+  for(j = 0; j < 4; j++){
+    html += `<tr>`;
+    for(i = 0; i < 16; i++){
+      html += `<td onclick="pick(${j*16+i})" class="color" style="background:${global_palette[j*16+i]}">`
+    }
+    pal.innerHTML = html;
+  }
+}
+
+new_bg = (html, i, j) => {
+  html = `<br><table><tr>`;
+  for(i = 0; i < 4; i++){
+    for(j = 0; j < 4; j++) {
+      html += `<td id="bg_${bgs}_${i}_${j}" class="color ${j==0 && i > 0 ? "disabled" : ""}" onclick="set(0,${bgs},${i},${j})"></td>`;
+    }
+    html += `<td class="space"></td>`;
+  }
+  html += `</table> <button hidden onclick="preview_bg(${bgs})">preview</button>`;
+  bg_p.innerHTML += html;
+  bgs++;
+}
+
+new_sprite = (html, i, j) => {
+  html = `<br><table><tr>`;
+  for(i = 0; i < 4; i++){
+    for(j = 0; j < 4; j++) {
+      html += `<td id="sprite_${sprites}_${i}_${j}" class="color ${j==0 ? "disabled" : ""}" onclick="set(1,${sprites},${i},${j})"></td>`;
+    }
+    html += `<td class="space"></td>`;
+  }
+  html += `</table> <button hidden onclick="preview_sprite(${sprites})">preview</button>`;
+  sprite_p.innerHTML += html;
+  sprites++;
+}
+
+current_type = 0;
+current_pal = 0;
+current_subpal = 0;
+current_color = 0;
+
+set = (type, p, subp, col) => {
+  current_type = type;
+  current_pal = p;
+  current_subpal = subp;
+  current_color = col;
+  if(current_color > 0 || (current_subpal == 0 && current_type == 0)){
+    modal.style.display = "block";
+  }
+}
+
+pick = (col) => {
+  top[`${current_type ? "sprite": "bg"}_${current_pal}_${current_subpal}_${current_color}`].style.background = global_palette[col];
+  modal.style.display = "none";
+}
+
+modal.onclick = () => {
+  modal.style.display = "none";
+}
+
+
+
+new_bg();
+new_sprite();
+</script>
+
+<style>
+td.color { width: 40px; height: 40px; border: 1px solid #000; cursor:pointer; background: #000; }
+td.space { width: 10px; height: 40px; border: none; }
+#bg_p, #sprite_p { min-height:60px; padding: 0 0 20px 0 }
+table { margin: 0 0 5px 0; display: inline-block; vertical-align: middle;}
+td.disabled {
+cursor:default;
+background:#fff;
+background-image: linear-gradient(45deg, #eee 25%, transparent 25%, transparent 75%, #eee 75%), linear-gradient(45deg, #eee 25%, transparent 25%, transparent 75%, #eee 75%);
+background-size: 16px 16px;
+background-position: 0 0, 8px 8px;
+}
+#modal { background: #8888; position: fixed; top: 0; left: 0; width: 100%; height: 100%; }
+#dialog { width: 720px; padding: 5px 5px 2px; background: #fff; position: fixed; top: 50%; left: 50%; transform: translateX(-50%) translateY(-50%) }
+</style>
