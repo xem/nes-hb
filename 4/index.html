@@ -99,23 +99,32 @@ current_pal = 0;
 current_subpal = 0;
 current_color = 0;
 
-set = (type, p, subp, col) => {
+set = (type, p, subp, col, x, y) => {
   current_type = type;
   current_pal = p;
   current_subpal = subp;
   current_color = col;
   if(current_color > 0 || (current_subpal == 0 && current_type == 0)){
     modal.style.display = "block";
+    top[`${current_type ? "sprite": "bg"}_${current_pal}_${current_subpal}_${current_color}`].classList.add("hl");
+    x = top[`${current_type ? "sprite": "bg"}_${current_pal}_${current_subpal}_${current_color}`].getBoundingClientRect().left;
+    y = top[`${current_type ? "sprite": "bg"}_${current_pal}_${current_subpal}_${current_color}`].getBoundingClientRect().top;
+    dialog.style.top = y + 50 + "px";
+    dialog.style.left = Math.min(innerWidth - 10, Math.max(10, x - 300)) + "px";
+    
   }
 }
 
 pick = (col) => {
+  //console.log(top[`${current_type ? "sprite": "bg"}_${current_pal}_${current_subpal}_${current_color}`].classList);
   top[`${current_type ? "sprite": "bg"}_${current_pal}_${current_subpal}_${current_color}`].style.background = global_palette[col];
+  top[`${current_type ? "sprite": "bg"}_${current_pal}_${current_subpal}_${current_color}`].classList.remove("hl");
   modal.style.display = "none";
 }
 
 modal.onclick = () => {
   modal.style.display = "none";
+  top[`${current_type ? "sprite": "bg"}_${current_pal}_${current_subpal}_${current_color}`].classList.remove("hl");
 }
 
 
@@ -130,12 +139,15 @@ td.space { width: 10px; height: 40px; border: none; }
 #bg_p, #sprite_p { min-height:60px; padding: 0 0 20px 0 }
 table { margin: 0 0 5px 0; display: inline-block; vertical-align: middle;}
 td.disabled {
-cursor:default;
-background:#fff;
-background-image: linear-gradient(45deg, #eee 25%, transparent 25%, transparent 75%, #eee 75%), linear-gradient(45deg, #eee 25%, transparent 25%, transparent 75%, #eee 75%);
-background-size: 16px 16px;
-background-position: 0 0, 8px 8px;
+  cursor:default;
+  background:#fff;
+  background-image: linear-gradient(45deg, #eee 25%, transparent 25%, transparent 75%, #eee 75%), linear-gradient(45deg, #eee 25%, transparent 25%, transparent 75%, #eee 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 8px 8px;
 }
+td { position: relative }
+td.hl { z-index: 4; }
+td.hl:after { content: ""; display: block; position: absolute; width: 30px; height: 30px; transform: rotate(45deg); margin: 20px 0 0 2px; background: #fff; border: 4px solid #000; z-index: 0; clip-path: path('M0,0 L0,30 L30,0 Z')}
 #modal { background: #8888; position: fixed; top: 0; left: 0; width: 100%; height: 100%; }
-#dialog { width: 720px; padding: 5px 5px 2px; background: #fff; position: fixed; top: 50%; left: 50%; transform: translateX(-50%) translateY(-50%) }
+#dialog { width: 720px; padding: 5px 5px 2px; background: #fff; border:4px solid; position: fixed; top: 0; left: 0 }
 </style>
