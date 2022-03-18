@@ -186,11 +186,13 @@ modal.onclick = () => {
 del_bg = (p) => {
   bg_palettes[p] = null;
   top["bg_"+p].remove();
+  exp()
 }
 
 del_sprite = (p) => {
   sprite_palettes[p] = null;
   top["sprite_"+p].remove();
+  exp();
 }
 
 exp = (html,i) => {
