@@ -112,7 +112,7 @@ onload = (html, i, j, x, y) => {
   for(tile = 0; tile < 512; tile++){
     for(y = 0; y < 8; y++){
       for(x = 0; x < 8; x++){
-        px[tile][y * 8 + x] = !!(bin[tile][y] & (1 << (7-x))) * 2 + !!(bin[tile][y+8] & (1 << (7-x)));
+        px[tile][y * 8 + x] = !!(bin[tile][y] & (1 << (7-x))) + !!(bin[tile][y+8] & (1 << (7-x))) * 2;
       }
     }
   }
@@ -279,7 +279,7 @@ tileset.oninput = () => {
   for(tile = 0; tile < 512; tile++){
     for(y = 0; y < 8; y++){
       for(x = 0; x < 8; x++){
-        px[tile][y * 8 + x] = !!(bin[tile][y] & (1 << (7-x))) * 2 + !!(bin[tile][y+8] & (1 << (7-x)));
+        px[tile][y * 8 + x] = !!(bin[tile][y] & (1 << (7-x))) + !!(bin[tile][y+8] & (1 << (7-x))) * 2;
       }
     }
   }
