@@ -1,0 +1,35 @@
+<tt>
+<h2>NES homebrew tools, part 5: background/map editor</h2>
+<ul>
+<li>Paste a <a href="http://localhost/nes-hb/3/" target=_blank>tileset</a> here: <textarea id=tileset style="width:200px;height:16px;font-size:12px;resize:none;padding:0;margin:4px 0 0;vertical-align: sub;" spellcheck=false></textarea> <button style="cursor:pointer;height:16px;line-height: 11px;" onclick='tileset.value=smb;tileset.oninput();tileset.value=""'>reset</button> - use bank <input type=radio name=bank id=b0> 0 <input type=radio name=bank id=b1 checked> 1
+<li>Paste a <a href="http://localhost/nes-hb/4/" target=_blank>BG palette</a> here: <input id=pamete style="width:400px">
+<li>Choose a screen size: W <input id=W value=32 style="width:50px"> x H <input id=H value=30 style="width:50px"> (<span id=bytes>1024 bytes</span>)
+<li>Pick a subpalette and a tile, and click in the grid below to use it:
+</ul>
+<br>
+<br>
+<table>
+<tr>
+<th>Tileset/palette<th>Editor
+<tr>
+<td style="padding:0 8px 0 0;">
+<canvas id=t width=256 height=256></canvas>
+<p>
+
+<table class=subpalettes>
+<tr>
+<td id=p0>
+<td id=p1>
+<td id=p2>
+<td id=p3>
+</table>
+<td>
+<canvas id=c width=512 height=480></canvas>
+
+<style>
+input { height: 16px; line-height: 16px; margin: 2px 0; vertical-align: middle; }
+input[type=radio] { vertical-align: sub; }
+canvas { border: 2px solid; }
+td { vertical-align: top }
+.subpalettes td { width: 56px; height: 56px; margin: 0 8px 0 0; border: 2px solid; }
+</style>

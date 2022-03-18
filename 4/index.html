@@ -7,6 +7,7 @@
 <li>Palettes/subpalettes can be modified between frames or mid-frame. Tiles and sprites can also switch subpalettes at any moment.
 <li>There's no official NES color palette (it depends on how TVs decode the NES video signal). Here I use the 3DS virtual console's palette.
 <li>The editor below allows to create unlimited 16-color palettes. Remember that only one of each (background and sprite) can be used at once.
+<li>The preview button shows how each subpalette colors a given tileset. To use a <a href="../3" target=_blank>custom tileset</a>, paste it here: <textarea id=tileset style="width:200px;height:16px;font-size:12px;resize:none;padding:0;margin:4px 0 0;vertical-align: sub;" spellcheck=false></textarea> <button style="cursor:pointer;height:16px;line-height: 11px;" onclick='tileset.value=smb;tileset.oninput();tileset.value=""'>reset</button>
 </ul>
 <br>
 <br>
@@ -211,7 +212,10 @@ exp = (html,i) => {
 
 x1 = c.getContext("2d");
 
+last_p = [];
+
 preview = (p) => {
+  p ||= last_p;
   modal2.style.display = "block";
   var i, j, k, x, y, col, lx, ly, rx, ry;
 
@@ -251,10 +255,37 @@ exp();
 
 new_bg();
 new_sprite();
+
+tileset.oninput = () => {
+
+  tile = 0;
+  byte = 0;
+
+  z = tileset.value;
+  z.replace(/[a-f0-9]{2}/gi, (a)=>{
+    if(tile < 512){
+      a = parseInt(a, 16);
+      bin[tile][byte] = a;
+      byte++;
+      if(byte == 16){
+        byte = 0;
+        tile++;
+      }
+    }
+  });
+  
+  for(tile = 0; tile < 512; tile++){
+    for(y = 0; y < 8; y++){
+      for(x = 0; x < 8; x++){
+        px[tile][y * 8 + x] = !!(bin[tile][y] & (1 << (7-x))) * 2 + !!(bin[tile][y+8] & (1 << (7-x)));
+      }
+    }
+  }
+}
 </script>
 
 <style>
-td.color { width: 30px; height: 30px; border: 1px solid #000; cursor:pointer; background: #000; }
+td.color { width: 30px; height: 30px; border: 1px solid #000; cursor:pointer; background: #737373; }
 td.space { width: 10px; height: 30px; border: none; }
 #bg_p, #sprite_p { min-height:60px; padding: 0 0 20px 0 }
 table { margin: 0 0 5px 0; display: inline-block; vertical-align: middle;}
@@ -274,4 +305,5 @@ td.hl:after { content: ""; display: block; position: absolute; width: 30px; heig
 #dialog2 td { text-align: center; }
 textarea { width: 800px; height: 150px }
 canvas { border: 2px solid; }
+input { width: 190px; height: 16px; line-height: 16px; padding: 2px 5px; margin: 3px 0 0 0 }
 </style>
