@@ -4,7 +4,7 @@
 <li>Paste a <a href="http://localhost/nes-hb/3/" target=_blank>tileset</a> here: <textarea id=tileset style="width:200px;height:16px;font-size:12px;resize:none;padding:0;margin:4px 0 0 20px;vertical-align: sub;" spellcheck=false></textarea> <button style="cursor:pointer;height:16px;line-height: 11px;" onclick='tileset.value=smb;tileset.oninput();tileset.value=""'>reset</button>
 - use bank <input type=radio name=bank id=b0> 0 <input type=radio name=bank id=b1 checked> 1
 <li>Paste a <a href="http://localhost/nes-hb/4/" target=_blank>BG palette</a> here: <input id=palette style="width:200px;font-size:12px;resize:none;padding:0;margin:4px 0 0 0;vertical-align: sub;"> <button style="cursor:pointer;height:16px;line-height: 11px;" onclick='palette.value=p;palette.oninput();palette.value=""'>reset</button>
-<li>Choose a screen size: W <input id=W value=32 style="width:50px" type=number min=32> x H <input id=H value=30 style="width:50px" type=number min=30> (<span id=bytes>1024</span> bytes uncompressed)
+<li>Choose a screen size: W <input id=W value=32 style="width:50px" type=number min=32 max=255> x H <input id=H value=30 style="width:50px" type=number min=30 max=255> (<span id=bytes>1024</span> bytes uncompressed / <span id=bytes2>0</span> bytes compressed)
 <li>Pick a subpalette and a tile, and click in the grid below to use it.
 <li>The NES fills the background with tile 0 / subpalette 0 by default.
 <li>The sample tiles and palette are from SMB. (use tile #36 as the default tile to see an empty backgroun)
@@ -25,7 +25,9 @@
 <td id=p2><table><tr><td id=p20><td id=p21><tr><td id=p22><td id=p23></table>
 <td id=p3><table><tr><td id=p30><td id=p31><tr><td id=p32><td id=p33></table>
 </table>
-<p>Default tile #<input id=def style=width:40px type=number min=0 max=255 value=0>
+<p>Default tile #<input id=def style=width:40px type=number min=0 max=255 value=0> palette #<input id=defp style=width:40px type=number min=0 max=3 value=0>
+<br>Export:<p>
+<textarea id=out readonly></textarea>
 <td>
 <canvas id=c width=512 height=480></canvas>
 
@@ -39,6 +41,7 @@ td { vertical-align: top }
 .subpalettes td.on { border: 4px solid red }
 .subpalettes td table { border-collapse: collapse; border-spacing: 0; display: inline-block}
 .subpalettes td table td { width: 29px; height: 29px; margin: 0; border: 1px solid; }
+#out { width: 256px; height: 80px }
 </style>
 
 <script>
@@ -53,7 +56,7 @@ px = [];
 p=[34, 41, 26, 15, 34, 54, 23, 15, 34, 48, 33, 15, 34, 23, 23,15];
 p_tmp=[15, 41, 26, 9, 15, 60, 28, 15, 15, 48, 33, 28, 15, 23, 23,15];
 current_tile = 0;
-editor = [];
+editor = {tiles: {}, default: {t:0,p:0}};
 
 x1 = t.getContext("2d");
 x2 = c.getContext("2d");
@@ -102,6 +105,11 @@ onload = (html, i, j, x, y) => {
   
   preview();
   t.onclick({offsetX:0,offsetY:0});
+}
+
+exp = () => {
+  out.value = JSON.stringify(editor, null, 1);
+  bytes2.innerHTML = 2 + Object.keys(editor.tiles).length * 4;
 }
 
 tileset.oninput = (z) => {
@@ -157,6 +165,7 @@ W.oninput = H.oninput = () => {
 }
 
 preview = (lazy, tilesonly, x, y, z, tile, pal) => {
+  //console.log(lazy, tilesonly);
   var i, j, k, x, y, col, lx, ly, rx, ry;
   //console.log(tilesonly);
   
@@ -165,7 +174,7 @@ preview = (lazy, tilesonly, x, y, z, tile, pal) => {
     tile = current_tile + (b1.checked ? 256 : 0);
     pal = current_subpalette;
     
-    console.log(tile, pal, x, y, current_tile, current_subpalette);
+    //console.log(tile, pal, x, y, current_tile, current_subpalette);
 
     // For each pixel
     for(k in px[tile]){
@@ -220,7 +229,7 @@ preview = (lazy, tilesonly, x, y, z, tile, pal) => {
       for(j = 0; j < +H.value; j++){
         for(i = 0; i < +W.value; i++){
           tile = +def.value + (b1.checked ? 256 : 0);
-          pal = 0;
+          pal = +defp.value;
           // For each pixel
           for(k in px[tile]){
             
@@ -246,9 +255,9 @@ preview = (lazy, tilesonly, x, y, z, tile, pal) => {
       for(j = 0; j < +H.value; j++){
         for(i = 0; i < +W.value; i++){
           tile = +def.value + (b1.checked ? 256 : 0);
-          pal = 0;
-          if(z = editor[j * +W.value + i]){
-            console.log(i,j);
+          pal = +defp.value;
+          if(z = editor.tiles[i + "_" + j]){
+            //console.log(i,j);
             tile = z.t + (b1.checked ? 256 : 0);
             pal = z.p;
             // For each pixel
@@ -273,6 +282,8 @@ preview = (lazy, tilesonly, x, y, z, tile, pal) => {
     
     
   }
+  
+  if(!lazy && !tilesonly) exp();
 }
 
 current_subpalette = 0;
@@ -337,8 +348,8 @@ c.onclick = (e, lazy, x, y, pos) => {
   y = e.offsetY / 16| 0;
   //console.log(x,y, current_tile);
   pos = y * (+W.value) + x;
-  if(current_tile || current_subpalette) editor[pos] = {t: current_tile, p: current_subpalette};
-  else delete editor[pos];
+  if(current_tile || current_subpalette) editor.tiles[x + "_" + y] = {t: current_tile, p: current_subpalette, x, y};
+  else delete editor.tiles[pos];
   preview(lazy = 1, 0, x, y);
 }
 
@@ -348,8 +359,10 @@ c.onmousedown = (e) => {
   c.onclick(e);
 }
 onmouseup = (e) => {
-  md = 0;
-  preview();
+  if(md && e.target.id === "c"){
+    md = 0;
+    preview();
+  }
 }
 
 c.onmousemove = (e) => { 
@@ -358,8 +371,11 @@ c.onmousemove = (e) => {
   }
 }
 
-def.oninput = () => {
+def.oninput = defp.oninput = () => {
   preview();
+  editor.default.t = +def.value;
+  editor.default.p = +defp.value;
+  exp();
 }
 
 </script>
